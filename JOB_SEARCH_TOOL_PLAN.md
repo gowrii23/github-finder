@@ -3,8 +3,15 @@
 
 **Owner:** Gowrishankar Sekar  
 **Repo:** `github-finder` → pivot to **JobPulse** (working name)  
-**Status:** Planning only — no implementation yet  
+**Status:** Planning approved — ready for Phase 1 implementation  
 **Date:** September 2026
+
+**Confirmed decisions:**
+- Q1: **D** — Full-time SWE + AI/ML + contract gigs (all three lanes)
+- Q2: **Email + WhatsApp** (not Telegram) — daily email digest + WhatsApp instant alerts
+- Q3: **C** — GitHub Actions for fetch cron + local dashboard
+- Q4: **Yes** — rename repo to `jobpulse` after Phase 1
+- Q5: **70+** minimum score to notify
 
 ---
 
@@ -251,7 +258,7 @@ These are **public, free, no API key, structured JSON**. You get jobs **hours be
 | **Settings** | Role preferences, location, notification schedule, keyword tuning |
 | **Sources** | Manage company watchlist, enable/disable sources |
 
-### Notification digest format (email/Telegram)
+### Notification digest format (email + WhatsApp)
 
 ```
 🎯 JobPulse Daily — 8 new matches (Sep 2, 2026)
@@ -317,7 +324,7 @@ Total active jobs in DB: 142 · Auto-flush in: 30 days
                            ↓
 ┌──────────────────────┐    ┌────────────────────────────────────┐
 │  NOTIFICATION LAYER  │    │  REACT FRONTEND (github-finder)     │
-│  Email / Telegram    │    │  Dashboard · Saved · Applied · Settings│
+│  Email / WhatsApp    │    │  Dashboard · Saved · Applied · Settings│
 │  Daily digest 8 AM   │    │  localhost:3000 or Netlify deploy    │
 └──────────────────────┘    └────────────────────────────────────┘
 ```
@@ -478,15 +485,94 @@ Cost: ~$0.01 per job × 20 jobs/day = $0.20/day
 
 ## 9. Notification Design
 
-### Channels (pick one for MVP, add others later)
+### Channels
 
 | Channel | Pros | Cons | MVP? |
 |---|---|---|---|
-| **Email** (Gmail) | Universal, searchable | Can get noisy | ✅ Recommended |
-| **Telegram bot** | Instant, mobile-friendly | Need bot setup | ✅ Phase 2 |
+| **Email** (Gmail) | Universal, searchable, reliable | Can get noisy | ✅ Daily digest |
+| **WhatsApp** (CallMeBot API) | You already use it daily, instant on phone | Unofficial API, personal use only, ~80 msg/day limit | ✅ Instant Tier 1 alerts |
 | **Browser only** | Zero setup | Must open app | ✅ Default (dashboard) |
-| **WhatsApp** | You use it daily | No free API for personal | ❌ Skip |
-| **Slack** | Good for devs | Overkill for personal | ❌ Skip |
+| ~~Telegram~~ | — | Replaced by WhatsApp per owner preference | ❌ |
+| ~~WhatsApp Business API (Twilio)~~ | Official, scalable | Paid (~₹0.50/msg), Meta business verification | ❌ Overkill for personal tool |
+
+### WhatsApp setup (CallMeBot — free, personal use)
+
+**Yes, we can send WhatsApp notifications to your Indian number** via [CallMeBot](https://www.callmebot.com/blog/free-api-whatsapp-messages/). This is a one-time setup **you** do on your phone; the tool then sends messages via HTTP API.
+
+#### One-time activation (you do this once)
+
+```
+1. Add +34 684 72 39 62 to your phone contacts (CallMeBot)
+2. Open WhatsApp → message that contact:
+   "I allow callmebot to send me messages"
+3. Bot replies with your personal API key (e.g. APIKEY: 123456)
+4. Save API key in .env file (NEVER commit to git)
+```
+
+#### Phone number format
+
+```
+Your number: 9965482482
+API format:  +919965482482   (country code 91, no spaces)
+```
+
+#### How the tool sends a message
+
+```javascript
+// backend/notifications/whatsapp.js
+const phone = process.env.WHATSAPP_PHONE;   // +919965482482
+const apikey = process.env.CALLMEBOT_API_KEY; // from activation
+
+const text = encodeURIComponent(
+  `🎯 JobPulse Alert\n\n` +
+  `[92] AI Integration Engineer\n` +
+  `Freshworks · Chennai/Remote\n` +
+  `https://boards.greenhouse.io/...`
+);
+
+await axios.get(
+  `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${text}&apikey=${apikey}`
+);
+```
+
+#### `.env` file (gitignored — never push to GitHub)
+
+```bash
+WHATSAPP_PHONE=+919965482482
+CALLMEBOT_API_KEY=your_key_from_bot
+EMAIL_TO=sgowrishankarrr@gmail.com
+GMAIL_USER=sgowrishankarrr@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
+```
+
+#### WhatsApp limitations (know upfront)
+
+| Limitation | Detail |
+|---|---|
+| **Personal use only** | CallMeBot TOS — not for commercial bulk messaging |
+| **~80 messages/day** | Enough for 5–10 job alerts/day |
+| **Unofficial API** | Not Meta-approved; service could change/stop |
+| **Text only** | No images, buttons, or rich cards |
+| **Delivery delay** | Can take a few seconds (free shared service) |
+| **One recipient** | Only your number (+919965482482) |
+
+#### Fallback if WhatsApp fails
+
+```
+Primary:   Email daily digest (always sent)
+Secondary: WhatsApp instant alert (Tier 1 only, score ≥ 85)
+Fallback:  If CallMeBot fails → log error, email still delivers
+```
+
+#### Alternative (if CallMeBot stops working later)
+
+| Option | Cost | Setup effort |
+|---|---|---|
+| **Twilio WhatsApp Sandbox** | Free trial, then ~₹0.50/msg | Medium — need Twilio account |
+| **Twilio WhatsApp Production** | Paid | High — Meta Business verification |
+| **Email only** | Free | Already built as primary |
+
+**Recommendation:** Start with CallMeBot (free). Keep email as reliable primary. Add Twilio only if CallMeBot becomes unreliable.
 
 ### Schedule
 
@@ -494,7 +580,7 @@ Cost: ~$0.01 per job × 20 jobs/day = $0.20/day
 |---|---|---|
 | **Daily** | 8:00 AM IST | New jobs from last 24h with score ≥ 60 |
 | **Weekly** | Sunday 9:00 AM IST | Summary: X new, Y saved, Z applied, top 5 picks |
-| **Instant** | On Tier 1 match (score ≥ 85) | Single job alert (Telegram only, Phase 2) |
+| **Instant** | On Tier 1 match (score ≥ 85) | Single job alert via **WhatsApp** (CallMeBot) |
 
 ### Email implementation options
 
@@ -633,7 +719,7 @@ jobpulse/  (rename repo later)
 | Email digest template | Tier 1 / Tier 2 / Contract sections |
 | Gmail SMTP or Resend integration | Free |
 | Cron: daily 8 AM IST send | node-cron or GitHub Actions |
-| Telegram bot (optional) | Instant alerts for score ≥ 85 |
+| **WhatsApp via CallMeBot** | Instant alerts for score ≥ 85 to +919965482482 |
 
 **Deliverable:** Email in inbox every morning.
 
@@ -672,7 +758,7 @@ jobpulse/  (rename repo later)
 | **HTTP client** | `axios` (already installed) | Familiar |
 | **Email** | `nodemailer` + Gmail SMTP | Free |
 | **Config** | YAML files (`js-yaml`) | Human-readable profile + sources |
-| **Notifications** | `node-telegram-bot-api` (Phase 3) | Free |
+| **Notifications** | `whatsapp.js` (CallMeBot) + `email.js` | Free |
 | **LLM scoring** | Claude API (Phase 4, optional) | ~$6/month |
 | **Deploy frontend** | Netlify (existing) | Free |
 | **Deploy cron** | GitHub Actions | Free (2000 min/month) |
@@ -752,58 +838,44 @@ jobpulse/  (rename repo later)
 
 ---
 
-## 15. Open Decisions (Need Your Input)
+## 15. Confirmed Decisions ✅
 
-Before we implement, please confirm:
+All decisions approved by owner (September 2026).
 
-### Q1: Primary job search lane?
+### Q1: Primary job search lane → **D (All three)**
 
-| Option | Description |
+Full-time SWE/Tech Lead + AI/ML transition roles + contract/AI trainer gigs — all in one tool with tier classification.
+
+### Q2: Notification preference → **Email + WhatsApp**
+
+| Channel | Use case |
 |---|---|
-| **A) Full-time SWE/Tech Lead** (recommended) | Chennai + remote, ₹25–50 LPA |
-| **B) AI/ML transition roles** | Applied AI, ML Engineer, GenAI |
-| **C) Both A + B** | Two tiers in same tool |
-| **D) A + B + contract gigs** | Full tool with all three lanes |
+| **Email** | Daily digest at 8 AM IST (all jobs score ≥ 70) |
+| **WhatsApp** | Instant alert for Tier 1 only (score ≥ 85) via CallMeBot |
+| ~~Telegram~~ | Not used |
 
-**Recommendation:** **D** — you need full-time + weekend contract income.
+**WhatsApp number:** `+919965482482` (stored in `.env`, never in git)
 
-### Q2: Notification preference?
+### Q3: Where backend runs → **C (Both)**
 
-| Option | Description |
+| Component | Where |
 |---|---|
-| **A) Email only** | Daily digest to Gmail |
-| **B) Telegram only** | Bot messages |
-| **C) Email + Telegram** | Both |
-| **D) Dashboard only** | No push notifications |
+| Job fetch cron | GitHub Actions (4×/day, runs when laptop is off) |
+| Dashboard + DB | Local machine |
+| Notifications | GitHub Actions (morning digest) or local cron |
 
-**Recommendation:** **C** — email for daily digest, Telegram for urgent Tier 1 matches.
+### Q4: Repo rename → **Yes, to `jobpulse`**
 
-### Q3: Where should the backend run?
+Rename after Phase 1 backend MVP is working.
 
-| Option | Description |
+### Q5: Minimum match score to notify → **70+**
+
+| Score | Action |
 |---|---|
-| **A) Local machine** | Run cron when laptop is on |
-| **B) GitHub Actions** | Free cloud cron, runs even when laptop is off |
-| **C) Both** | GitHub Actions for fetch, local for dashboard |
-
-**Recommendation:** **C** — GitHub Actions fetches jobs 4×/day; you browse locally.
-
-### Q4: Repo rename?
-
-| Option | Description |
-|---|---|
-| **A) Keep `github-finder`** | Less work, confusing name |
-| **B) Rename to `jobpulse`** | Clean, descriptive |
-
-**Recommendation:** **B** — rename when Phase 1 is done.
-
-### Q5: Minimum match score to notify?
-
-| Option | Threshold |
-|---|---|
-| **A) 60+** | More jobs, some noise |
-| **B) 70+** | Balanced (recommended) |
-| **C) 80+** | Only best matches, might miss good ones |
+| 85+ | Email + **WhatsApp instant** |
+| 70–84 | Email daily digest only |
+| 40–69 | Dashboard only |
+| < 40 | Hidden |
 
 ---
 
@@ -899,11 +971,11 @@ Once you confirm the open decisions (Section 15), implementation order is:
 ```
 Week 1: Phase 1 — Backend MVP (ATS fetchers + SQLite + scorer + cleanup)
 Week 2: Phase 2 — React dashboard (repurpose github-finder)
-Week 3: Phase 3 — Email/Telegram notifications
+Week 3: Phase 3 — Email + WhatsApp notifications
 Week 4: Phase 4 — More sources + tuning
 ```
 
-**Your immediate action:** Reply with answers to Q1–Q5 in Section 15, and we'll start Phase 1.
+**Next step:** Start Phase 1 — backend MVP (ATS fetchers + SQLite + scorer + cleanup).
 
 ---
 
