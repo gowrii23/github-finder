@@ -15,7 +15,10 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "telegram:chat-id": "node backend/scripts/get-telegram-chat-id.js",
-    "telegram:test": "node backend/scripts/test-telegram.js"
+    "telegram:test": "node backend/scripts/test-telegram.js",
+    "notify:digest": "node backend/cron/notify-digest.js digest",
+    "notify:test": "node backend/cron/notify-digest.js test",
+    "secrets:push": "bash scripts/setup-github-secrets.sh"
   },
   "eslintConfig": {
     "extends": "react-app"

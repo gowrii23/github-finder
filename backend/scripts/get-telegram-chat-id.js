@@ -97,6 +97,17 @@ async function main() {
   const primaryId = [...chats.keys()][0];
   console.log('Add this line to your .env file:');
   console.log(`  TELEGRAM_CHAT_ID=${primaryId}\n`);
+
+  // Auto-update .env if TELEGRAM_CHAT_ID is empty
+  const envPath = path.join(__dirname, '../../.env');
+  if (fs.existsSync(envPath)) {
+    let content = fs.readFileSync(envPath, 'utf8');
+    if (/^TELEGRAM_CHAT_ID=\s*$/m.test(content) || /^TELEGRAM_CHAT_ID=$/m.test(content)) {
+      content = content.replace(/^TELEGRAM_CHAT_ID=.*$/m, `TELEGRAM_CHAT_ID=${primaryId}`);
+      fs.writeFileSync(envPath, content);
+      console.log('Updated .env with TELEGRAM_CHAT_ID automatically.\n');
+    }
+  }
 }
 
 main().catch((err) => {
