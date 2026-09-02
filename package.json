@@ -13,7 +13,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "telegram:chat-id": "node backend/scripts/get-telegram-chat-id.js",
+    "telegram:test": "node backend/scripts/test-telegram.js"
   },
   "eslintConfig": {
     "extends": "react-app"
