@@ -49,7 +49,7 @@ function formatJobAlert(jobs, type = 'instant') {
       : '<b>📋 JobPulse — Daily digest</b>';
 
   if (!jobs.length) {
-    return `${header}\n\nNo new matching jobs in this run.\n<i>Job fetcher activates in Phase 1.</i>`;
+    return `${header}\n\nNo new matching jobs in this run.`;
   }
 
   const lines = jobs.map((job, i) => {

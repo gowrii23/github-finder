@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "axios": "^0.18.1",
+    "better-sqlite3": "^13.0.3",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.0.0",
@@ -16,7 +17,9 @@
     "eject": "react-scripts eject",
     "telegram:chat-id": "node backend/scripts/get-telegram-chat-id.js",
     "telegram:test": "node backend/scripts/test-telegram.js",
+    "jobs:fetch": "node backend/cron/fetch-jobs.js",
     "notify:digest": "node backend/cron/notify-digest.js digest",
+    "notify:instant": "node backend/cron/notify-digest.js instant",
     "notify:test": "node backend/cron/notify-digest.js test",
     "secrets:push": "bash scripts/setup-github-secrets.sh"
   },
